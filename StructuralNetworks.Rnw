@@ -1,0 +1,204 @@
+\documentclass{llncs}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{subfig}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{wrapfig}
+
+\newcommand{\X}{{\bf X}}
+\newcommand{\x}{{\bf x}}
+\newcommand{\p}{{\bf p}}
+\newcommand{\rr}{{\bf r}}
+\newcommand{\I}{\image{I}}
+\newcommand{\V}{{\bf V}}
+\newcommand{\vv}{{\bf v}}
+\newcommand{\h}{{\bf H}}
+% {\Large \bf  Eigenanatomy: A sparse anatomical decomposition method for a ``cluster then threshold'' approach to morphometry} \\
+\title{Tracking Neurodevelopment Using Single-Subject Cortical Structural Graphs}
+% \author{Anon}
+% \institute{Penn Image Computing and Science Laboratory}
+\begin{document}
+\maketitle
+\begin{abstract}
+Although much attention has recently been focused on single-subject functional networks, using methods such as resting-state functional MRI connectivity, methods for constructing single-subject structural networks are in their infancy.  Single-subject cortical networks aim to describe the self-similarity across the cortical structure, possibly signifying convergent developmental pathways.  Previous methods for constructing single-subject cortical networks have used patch-based correlations and distance metrics based on curvature and thickness.  We present here a principled method for constructing similarity-based cortical structural networks that provides a truly rotation-invariant representation of structure.  The resulting graph metrics are closely linked to age and indicate an increasing degree of closeness throughout development in nearly all brain regions, perhaps corresponding to a more regular structure as the brain matures.  The derived graph metrics are much better predictors of age than cortical thickness is.  
+\end{abstract}
+
+\section*{Introduction}
+Brain connectivity has emerged as a dominant trend in recent neuroimaging research.  Although most of this research has focused on functional connectivity \cite{greicius_functional_2003,fox_human_2005}, structural connections, including diffusion-based connections, have also been investigated \cite{greicius_resting-state_2009}.  In addition to these measures, some researchers have focused on covariations of cortical structure \cite{alexander-bloch_imaging_2013} across populations.  Covariance patterns of cortical structure often recapitulate functional connectivity patterns \cite{segall_correspondence_2012}, although this analysis is complicated in part because while functional networks can be derived on a per-subject basis, structural networks are commonly derived on a group basis, making statistical analysis of structural networks challenging \cite{bassett_hierarchical_2008}.  Therefore, although \cite{segall_correspondence_2012} showed that ICA components of cortical covariance are similar to ICA components of rs-fMRI networks, statistical analysis on a per-subject basis is not straightforward.
+
+As a result of these difficulties with group-wise structural networks, several groups have begun to pursue single-subject cortical networks.     These methods have coalesced around two different camps:  Those that generate a network based on the difference between some derived scalar metrics from cortical morphology, such as cortical thickness or curvature, and those that use a patch-based correlation between two different voxels.  In the first camp, \cite{raj_network-level_2010} used a combination of cortical thickness and curvature-based metrics to construct networks.  Similarly, Dai \cite{dai_network-based_2011} used differences between regional cortical thickness measurements to create cortical networks. In the second camp, Tijms et al.\ \cite{tijms_similarity-based_2012,tijms_single-subject_2013} construct similarity networks based on the correlation between patches centered around different voxels. 
+
+Previous methods for constructing single-subject cortical networks suffer from several drawbacks.  Fundamentally, cortical thickness, although an important measure of cortical structure, does not capture all the information of the surrounding neighborhood of a voxel; similarities in cortical thickness do not necessarily imply similarities in structure as a whole.  Furthermore, when combining separate scalar values, such as thickness and one of several curvature measurements, how to combine the features into a meaningful distance metric is not at all straightforward, and previous methods have constructed complex and highly specialized models for individual diseases \cite{raj_network-level_2010}.  Examining correlations of patches centered around given voxels is an intuitive and straightforward approach; the only parameter to choose is the patch size, which can be chosen based on principled methods.  
+
+However, the previously published method for computing correlations between voxels suffers from some technical imperfections.  To obtain rotation invariance, the previous method rotated cubes in increments of 45 degrees to obtain maximal correlation with the test patch.  This method suffers from several flaws: 1) The choice of 45 degrees is arbitrary; there is no fundamental reason to only rotate patches in increments of 45 degrees. 2) Although it is not entirely clear from their description, it appears that \cite{tijms_similarity-based_2012} ``rotates'' cubes by simply permuting the entries in the patch.  This ``rotation'' will lead to distortion in the shape, as the distance from voxel in the center of a square to the voxel immediately above it is a factor of $\sqrt{2}$ smaller than the distance between the center of the square to the corner (see Figure FIG). 3) The operation is only defined for the somewhat arbitrary shape of cubes of size 3$\times$3$\times$3 voxels.  
+
+As opposed to the previously proposed approaches, we propose a truly rotation-invariant approach to computing structural similarity across brain regions.  Reorienting two images so that their orientations match is a well-posed problem that has solutions known from satellite attitude adjustment and chemical crystallography.  Leveraging these methods, we construct a rotation-invariant representation of the patches surrounding individual voxels.  The correlation between different patches for different voxels give the adjacency weights in the graph.  
+
+We apply the method to tracking the network dynamics of cortical structure in a pediatric dataset.  We find that network measurements increase the power of detecting age changes by a factor of XXXX and of detecting gender differences by XXXX.  In sum, our contributions are: 1) Method for constructing rotation-invariant structural similarity metrics; 2) Method for combining these sensibly into a smaller-dimensional graph; 3) Demonstration that pediatric development and gender is closely correlated with node closeness, which is more predictive than scalar ROI values; and 4) Demonstration that the proposed method is superior to thickness distance-based cortical networks for predicting age and gender. 
+
+\section*{Methods}
+\textbf{Rotation-Invariant Correlation:} To generate the structural correlation matrix, we first construct a rotation-invariant representation of patches for each voxel in the image.  We begin with taking a vector representation of a sphere of diameter 2.1 cm, centered around the voxel of interest, and concatenate them all into one $n \times m$ matrix, where $n$ is the number of voxels in the image and $m$ is the number of voxels in each patch.  Although the choice of orientation is arbitrary, we must choose one orientation as a base for reorienting all the patches.  Instead of choosing one patch, which could bias our results, we take the eigendecomposition of the $n \times m$ patch matrix, and use the first eigenvector of this patch matrix as the target patch.  The problem of aligning the orientation of two vectors has been known as Wahba's problem since it was first posed in the 1960's \cite{wahba_least_1965}, and the analytical solution is known as the Kabsch algorithm \cite{markley_attitude_1988,kabsch_solution_1976}.  Aligning two images corresponds to aligning the orientations of the  first eigenvector (or two eigenvectors for a 3D image) of the covariance matrix of the gradient of the image.  Denoting the $k$'th eigenvector of the gradient covariance matrix of the reference frame as $w_k$ and the $k$'th eigenvector of the patch to be rotated as $v_k$, we calculate the rotation matrix $Q$ that best aligns them: 
+\begin{equation}
+\underset{Q}{\operatorname{arg\,max}} \quad \sum_k \| w_k - \mathbf{Q} v_k \|^2
+\label{eqn:wahba}
+\end{equation}
+Denoting $B = w_k v_k^T$, we compute the singular value decomposition (SVD) of $B$: $B = U S V^\mathrm{T}$.  Then the analytical solution to Equation \ref{eqn:wahba} is given by $Q = U M V^T$, where M = diag[1 1 det(U) det(V)].  A more computationally expensive alternative is to use the Radon transform to estimate orientation \cite{jafari-khouzani_radon_2005,chen_rotation_2012}.  
+
+\noindent \textbf{Correlation Matrix Construction}: In most connectome construction schemes, data is first averaged over some brain parcellation and those averaged values are then used for calculating correlations \cite{varoquaux_learning_2013}.  In this case, however, the average of a series of patches is ill-defined, and we found that constructing correlation matrices in this manner did not yield meaningful results.  Instead, we first calculated the correlation of each voxel in the image with every other voxel in the image.  As is standard, we constructed an $I \times I$ correlation matrix, where there are a total of $I$ regions (nodes) for each subject.  The correlation between region $i$ and $j$ was then calculated as the mean of the correlation of each voxel in region $i$ with each voxel in region $j$.  Once the correlation matrix was constructed, normalized closeness was calculated using the \verb=igraph= package in R \cite{csardi_igraph_????}.  
+
+\noindent \textbf{Clinical data: Test-Retest Data.} The cohort consists of 12 healthy young adult participants (mean age 25.5$\pm$4.5 years, 7 female, 5 male). For each subject, data was acquired at two time points in the same day. For each time point, high resolution T1-weighted anatomic images were obtained using 3D MPRAGE imaging sequence and the following acquisition parameters: TR = 1620 ms, TI = 950 ms, TE = 3 ms, flip angle = $15\,^{\circ}$, 160 contiguous slices of 1.0 mm thickness, FOV = 192 $\times$ 256 mm$^2$, matrix = 192$\times$256, 1 NEX with a scan time of 6 min. The resulting voxel size was 1 mm. A complete description of this dataset can be found in \cite{chen_testretest_2011}.
+\noindent \textbf{Pediatric Data:} Our pediatric data consists of BLAHBLAHBLAH 
+%\Sexpr{tmp$nsubj.ped} subjects, with mean age \Sexpr{mean(age.ped$Age)}, range \Sexpr{min(age.ped$Age)}-\Sexpr{max(age.ped$Age)} years (Figure \ref{fig:hist_ages}).  
+Magnetization-Prepared Rapid Acquisition Gradient Echo (MPRAGE) images were acquired using a 3D inversion recovery sequence with TR/TE/TI = 2170/4.33/1100 ms.  The resolution was 1x1x1mm$^2$ with a matrix size of 256x256x192. Flip angle = $7\,^{\circ}$ and total scan time was 8:08 minutes.  
+
+\section*{Results}
+<<setup, echo=F, results='hide'>>=
+library(knitr)
+opts_chunk$set(echo=F, results='hide') 
+@
+
+
+\subsection*{Sample Subject}
+<<samplesubj, eval=F>>=
+suppressMessages(require(pheatmap))
+suppressMessages(require(ANTsR))
+mymat <- read.csv('data/imgs/PEDS007_20100709_PatchCorMat.csv', row.names=1)[1:68, 1:68] # only take cortical nodes
+pdf('figure/cormat.pdf')
+pheatmap(mymat, cluster_cols=F, cluster_rows=F)
+dev.off()
+
+mnit<-antsImageRead(getANTsRData("mni"),3)
+mnia<-antsImageRead(getANTsRData("mnia"),3)
+ThresholdImage(3, mnit, mnit, 1, max(mnit))
+ImageMath(3, mnit, "FillHoles", mnit)
+cnt <- getCentroids(mnia, clustparam = 50)
+aalcnt<-cnt$centroids[1:68,]
+brain<-renderSurfaceFunction( surfimg =list( mnit ) , alphasurf=0.1 ,smoothsval = 1.5 )
+mythresh <- 0.47
+mymat.sparse <- mymat
+mymat.sparse[mymat.sparse<mythresh] <- 0
+testweights <- as.matrix(mymat.sparse)
+plotBasicNetwork( centroids = aalcnt , brain , weights=testweights, edgecolors='green')
+id<-par3d("userMatrix")
+rid<-rotate3d( id , -pi/2, 1, 0, 0 )
+rid2<-rotate3d( id , pi/2, 0, 0, 1 )
+rid3<-rotate3d( id , -pi/2, 0, 0, 1 )
+par3d(userMatrix = id ) 
+dd<-make3ViewPNG(  rid, id, rid2,  paste('figure/samplesubj',sep='') )
+par3d(userMatrix = id ) 
+@
+
+\begin{figure}
+\centering
+\includegraphics[width=7cm]{figure/cormat.pdf}
+\caption{Sample subject correlation matrix.}
+\label{fig:cormat}
+\end{figure}
+
+\begin{figure}
+\centering
+\includegraphics[width=14cm]{figure/samplesubj.png}
+\caption{Correlation between nodes, overlaid on MNI brain.}
+\label{fig:samplesubj}
+\end{figure}
+A correlation matrix for a sample subject is shown in Figure \ref{fig:cormat}, with the thresholded correlation matrix overlaid on the MNI template brain shown in Figure \ref{fig:samplesubj}.  Medial and lateral temporal structures tended to be most highly correlated across the brain.  
+
+
+
+<<plot, echo=F, results='hide', eval=T>>=
+demog <- read.csv('data/GraphDemog_backup_20eigvecs_nosmooth.csv')
+mycors.thick <- NULL
+mycors.patch <- NULL
+mycors.proj <- NULL
+mypvals.thick <- NULL
+mypvals.patch <- NULL
+mypvals.proj <- NULL
+
+mypvals.patch.sex <- NULL
+mypvals.proj.sex <- NULL
+mypvals.thick.sex <- NULL
+for( i in 1:90 ){
+  myvals.thick <- demog[, paste('Thickness_AAL.AAL', i, sep='')]
+  myvals.patch <- log(demog[, paste('Patch.Closeness.AAL', i, sep='')])
+  myvals.proj <- log(demog[, paste('Proj.Closeness.AAL', i, sep='')])
+  if(length(myvals.proj[!is.na(myvals.proj)] > 10)) {
+    projcor <- cor.test(demog$AgeAtScan, myvals.proj)
+    patchcor <- cor.test(demog$AgeAtScan, myvals.patch)
+    thickcor <- cor.test(demog$AgeAtScan, myvals.thick)
+
+    mypvals.patch.sex <- append(mypvals.patch.sex, summary(glm(demog$Sex ~ myvals.patch, family='binomial'))$coefficients[2,4])
+    mypvals.proj.sex <- append(mypvals.proj.sex, summary(glm(demog$Sex ~ myvals.proj, family='binomial'))$coefficients[2,4])
+    mypvals.thick.sex <- append(mypvals.thick.sex, summary(glm(demog$Sex ~ myvals.thick, family='binomial'))$coefficients[2,4])
+#    print(summary(glm(demog$Sex ~ myvals.proj, family='binomial')))
+
+    mycors.proj <- append(mycors.proj, projcor$estimate[[1]])
+    mycors.patch <- append(mycors.patch, patchcor$estimate[[1]])
+    mycors.thick <- append(mycors.thick, thickcor$estimate[[1]])
+
+    mypvals.proj <- append(mypvals.proj, projcor$p.value)
+    mypvals.patch <- append(mypvals.patch, patchcor$p.value)
+    mypvals.thick <- append(mypvals.thick, thickcor$p.value)
+    #mycors <- append(mycors, summary(lm(demog$AgeAtScan ~ myvals + demog$Sex))$adj.r.squared)
+#    mypvals <- append(mypvals, summary(lmrob(demog$AgeAtScan~myvals))$coefficients[2,4]) 
+#    thick.cor <- cor.test(demog$AgeAtScan, myvals.thick)
+#    mycors.thick <- append(mycors.thick, thick.cor$estimate[[1]])
+#    mypvals.thick <- append(mypvals.thick, thick.cor$p.value)
+  }
+}
+
+mypvals.proj.adj <- p.adjust(mypvals.proj, method='fdr') 
+mypvals.patch.adj <- p.adjust(mypvals.patch, method='fdr')
+mypvals.thick.adj <- p.adjust(mypvals.thick, method='fdr')
+@
+\subsection*{Reproducibility}
+
+<<power>>=
+library('MBESS') 
+form1 <- lm(AgeAtScan ~ 1, data=demog)
+form2 <- lm(AgeAtScan ~ Patch.Closeness.AAL51, data=demog)
+
+with<-(summary(form1))$r.squared
+without<-(summary(lm(form2,data=demog)))$r.squared
+pwr<-0.99
+alph<-0.0015
+#necessarysubjects<-ss.power.reg.coef(Rho2.Y_X =with,Rho2.Y_X.without =without, #alpha.level=alph,desired.power=pwr,p=1)$Necessary.Sample.Size
+#print(paste("necsubj:",necessarysubjects," with power",pwr,"and alpha",alph))
+@
+
+<<plot_aal51>>=
+suppressMessages(require(ANTsR))
+data(aal)
+pdf('figure/closeness_aal12.pdf')
+plot(demog$AgeAtScan, demog$Patch.Closeness.AAL12, xlab='Age (years)', ylab='Closeness', 
+  main=paste('Patch Closeness vs. Age for', aal$label_name[12]))
+dev.off()
+pdf('figure/thick_aal12.pdf')
+plot(demog$AgeAtScan, demog$Thickness_AAL.AAL12, xlab='Age (years)', ylab='Cortical Thickness (mm)', 
+  main=paste('Cortical Thickness vs. Age for', aal$label_name[12]))
+dev.off()
+@
+
+\noindent \textbf{Pediatric Data: } In pediatric data, graph closeness was found to be highly correlated with age in most regions, whereas cortical thickness was not found to be as predictive in as many regions.  Patch closeness was found to be significantly correlated with age (after FDR correction) in  \Sexpr{sum(mypvals.patch.adj[1:68]<0.05)} out of $68$ cortical regions, whereas for thickness, only \Sexpr{sum(mypvals.thick.adj[1:68]<0.05)} were found to be correlated.  An example region (AAL region 51, in the occipital lobe) is shown in Figure \ref{fig:plot}.  
+\begin{figure}
+\centering
+\includegraphics[width=5cm]{figure/closeness_aal12.pdf}
+\includegraphics[width=5cm]{figure/thick_aal12.pdf}
+\caption{Left: Closeness vs. age.  Right: Thickness vs. age.}
+\label{fig:plot}
+\end{figure}
+
+
+
+
+
+\section*{Conclusion}
+
+\bibliographystyle{plain}
+\bibliography{kandel_lib}
+
+\end{document}
