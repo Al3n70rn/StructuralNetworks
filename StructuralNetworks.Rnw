@@ -60,6 +60,7 @@ Magnetization-Prepared Rapid Acquisition Gradient Echo (MPRAGE) images were acqu
 <<setup, echo=F, results='hide'>>=
 library(knitr)
 opts_chunk$set(echo=F, results='hide') 
+if(!file.exists('figure')) dir.create('figure')
 @
 
 
